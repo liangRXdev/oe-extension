@@ -874,3 +874,34 @@ colorSchemeQuery?.addEventListener("change", () => {
     applyThemeToUi();
   }
 });
+
+// --- Dotflow POST injection for openevidence.com/ask ---
+// When the URL has oe_ext_dotflow_id, inject a fetch patch into the page context
+// so the first /api/article POST includes dotflow: { id }.
+(function injectDotflowFetch() {
+  if (!location.href.startsWith("https://www.openevidence.com/ask")) return;
+  const dotflowId = new URLSearchParams(location.search).get("oe_ext_dotflow_id");
+  if (!dotflowId) return;
+
+  const script = document.createElement("script");
+  script.textContent = `(function() {
+    var _id = ${JSON.stringify(dotflowId)};
+    var _orig = window.fetch;
+    var _done = false;
+    window.fetch = function(input, init) {
+      var url = typeof input === "string" ? input : (input && input.url) || "";
+      if (!_done && url.includes("/api/article") && init && init.method === "POST" && init.body) {
+        _done = true;
+        window.fetch = _orig;
+        try {
+          var body = JSON.parse(init.body);
+          if (!body.dotflow) body.dotflow = { id: _id };
+          return _orig(input, Object.assign({}, init, { body: JSON.stringify(body) }));
+        } catch (e) {}
+      }
+      return _orig.apply(this, arguments);
+    };
+  })();`;
+  document.documentElement.appendChild(script);
+  script.remove();
+})();

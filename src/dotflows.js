@@ -47,7 +47,3 @@ export async function fetchDotflows() {
   return normalized;
 }
 
-export function applyDotflow(query, dotflowName) {
-  if (!dotflowName) return query;
-  return `${dotflowName} ${query}`;
-}

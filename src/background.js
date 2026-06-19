@@ -1,4 +1,4 @@
-import { fetchDotflows, applyDotflow } from "./dotflows.js";
+import { fetchDotflows } from "./dotflows.js";
 
 const DEFAULT_WHITELIST = [
   "https://ankiuser.net/study",
@@ -32,14 +32,14 @@ const PICO_INSTRUCTION = `Rewrite my recall question as an EBM foreground questi
 Export as JSON:
 {"question":"$output"}`;
 
-function buildOpenEvidenceUrl(query) {
+function buildOpenEvidenceUrl(query, dotflowId) {
   const params = new URLSearchParams({
     query,
     configName: "prod",
     attachments: "[]",
     _rsc: "1pln2"
   });
-
+  if (dotflowId) params.set("oe_ext_dotflow_id", dotflowId);
   return `https://www.openevidence.com/ask?${params.toString()}`;
 }
 
@@ -182,17 +182,17 @@ function dispatchOpen(url, label, frameable, sourceTab, sendResponse) {
   openInTab(url, sourceTab, sendResponse, openModeCache !== OPEN_MODE_TAB_BG);
 }
 
-function openOpenEvidenceQuery(query, sourceTab, sendResponse, meta, dotflowName) {
+function openOpenEvidenceQuery(query, sourceTab, sendResponse, meta, dotflowName, dotflowId) {
   const nextQuery = typeof query === "string" ? query.trim() : "";
   if (!nextQuery) {
     sendResponse?.({ ok: false, error: "Empty query" });
     return;
   }
 
-  const finalQuery = applyDotflow(nextQuery, typeof dotflowName === "string" ? dotflowName : "");
-  const url = buildOpenEvidenceUrl(finalQuery);
-  const historyEntry = { ...(meta || { source: "selection" }), url, finalText: finalQuery };
+  const url = buildOpenEvidenceUrl(nextQuery, typeof dotflowId === "string" ? dotflowId : "");
+  const historyEntry = { ...(meta || { source: "selection" }), url, finalText: nextQuery };
   if (dotflowName) historyEntry.dotflowName = dotflowName;
+  if (dotflowId) historyEntry.dotflowId = dotflowId;
   recordHistory(historyEntry);
 
   // sidepanel loads the URL directly into its iframe; skip tab dispatch to avoid double-open
@@ -351,7 +351,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "OE_OPEN_QUERY") {
-    openOpenEvidenceQuery(message.query, sender.tab, sendResponse, message.meta, message.dotflowName);
+    openOpenEvidenceQuery(
+      message.query,
+      sender.tab,
+      sendResponse,
+      message.meta,
+      message.dotflowName,
+      message.dotflowId
+    );
     return true;
   }
 
@@ -479,8 +486,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
-chrome.action.onClicked.addListener(() => {
-  chrome.runtime.openOptionsPage();
+chrome.action.onClicked.addListener((tab) => {
+  if (chrome.sidePanel?.open && tab?.id != null) {
+    chrome.sidePanel.open({ tabId: tab.id });
+  } else {
+    chrome.runtime.openOptionsPage();
+  }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

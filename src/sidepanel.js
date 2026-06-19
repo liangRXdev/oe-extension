@@ -5,6 +5,7 @@ const DEFAULT_THEME = "system";
 const frame = document.querySelector("#oe-frame");
 const empty = document.querySelector("#panel-empty");
 const openTabButton = document.querySelector("#open-tab");
+const newQueryButton = document.querySelector("#new-query");
 const closeButton = document.querySelector("#close-panel");
 const settingsButton = document.querySelector("#open-settings");
 const titleEl = document.querySelector("#panel-title");
@@ -43,6 +44,15 @@ openTabButton.addEventListener("click", () => {
   if (currentUrl) {
     chrome.tabs.create({ url: currentUrl, active: true });
   }
+});
+
+newQueryButton.addEventListener("click", () => {
+  currentUrl = "";
+  frame.src = "";
+  frame.hidden = true;
+  empty.hidden = false;
+  openTabButton.hidden = true;
+  titleEl.textContent = "OpenEvidence";
 });
 
 settingsButton.addEventListener("click", () => {
@@ -106,7 +116,8 @@ function populateDotflowSelect(dotflows) {
   dotflowSelect.length = 1;
   for (const df of dotflows) {
     const opt = document.createElement("option");
-    opt.value = df.name;
+    opt.value = df.id;
+    opt.dataset.name = df.name;
     opt.textContent = df.is_default ? `${df.name} ✓` : df.name;
     dotflowSelect.appendChild(opt);
   }
@@ -129,14 +140,17 @@ dotflowForm.addEventListener("submit", (e) => {
     return;
   }
 
-  const dotflowName = dotflowSelect.value || "";
-  const finalQuery = dotflowName ? `${dotflowName} ${query}` : query;
+  const dotflowId = dotflowSelect.value || "";
+  const selectedOpt = dotflowSelect.options[dotflowSelect.selectedIndex];
+  const dotflowName = selectedOpt?.dataset.name || "";
+
   const params = new URLSearchParams({
-    query: finalQuery,
+    query,
     configName: "prod",
     attachments: "[]",
     _rsc: "1pln2"
   });
+  if (dotflowId) params.set("oe_ext_dotflow_id", dotflowId);
   const url = `https://www.openevidence.com/ask?${params.toString()}`;
 
   setSource(url, dotflowName ? `OE · ${dotflowName}` : "OpenEvidence");
@@ -145,6 +159,7 @@ dotflowForm.addEventListener("submit", (e) => {
     type: "OE_OPEN_QUERY",
     query,
     dotflowName,
+    dotflowId,
     meta: { source: "sidepanel" }
   });
 });
