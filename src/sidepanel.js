@@ -84,3 +84,67 @@ colorSchemeQuery?.addEventListener("change", () => {
     applyTheme("system");
   }
 });
+
+// --- Dotflow picker ---
+
+const dotflowForm = document.querySelector("#dotflow-form");
+const dotflowSelect = document.querySelector("#dotflow-select");
+const dotflowQuery = document.querySelector("#dotflow-query");
+const dotflowError = document.querySelector("#dotflow-error");
+
+function showDotflowError(msg) {
+  dotflowError.textContent = msg;
+  dotflowError.hidden = false;
+}
+
+function clearDotflowError() {
+  dotflowError.hidden = true;
+  dotflowError.textContent = "";
+}
+
+function populateDotflowSelect(dotflows) {
+  dotflowSelect.length = 1;
+  for (const df of dotflows) {
+    const opt = document.createElement("option");
+    opt.value = df.name;
+    opt.textContent = df.is_default ? `${df.name} ✓` : df.name;
+    dotflowSelect.appendChild(opt);
+  }
+}
+
+chrome.runtime.sendMessage({ type: "OE_FETCH_DOTFLOWS" }, (response) => {
+  if (chrome.runtime.lastError) return;
+  if (response?.ok && Array.isArray(response.dotflows)) {
+    populateDotflowSelect(response.dotflows);
+  }
+});
+
+dotflowForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  clearDotflowError();
+
+  const query = dotflowQuery.value.trim();
+  if (!query) {
+    showDotflowError("Please enter a question.");
+    return;
+  }
+
+  const dotflowName = dotflowSelect.value || "";
+  const finalQuery = dotflowName ? `${dotflowName} ${query}` : query;
+  const params = new URLSearchParams({
+    query: finalQuery,
+    configName: "prod",
+    attachments: "[]",
+    _rsc: "1pln2"
+  });
+  const url = `https://www.openevidence.com/ask?${params.toString()}`;
+
+  setSource(url, dotflowName ? `OE · ${dotflowName}` : "OpenEvidence");
+
+  chrome.runtime.sendMessage({
+    type: "OE_OPEN_QUERY",
+    query,
+    dotflowName,
+    meta: { source: "sidepanel" }
+  });
+});

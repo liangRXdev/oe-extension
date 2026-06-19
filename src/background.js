@@ -1,3 +1,5 @@
+import { fetchDotflows, applyDotflow } from "./dotflows.js";
+
 const DEFAULT_WHITELIST = [
   "https://ankiuser.net/study",
   "https://www.openevidence.com/*",
@@ -180,15 +182,25 @@ function dispatchOpen(url, label, frameable, sourceTab, sendResponse) {
   openInTab(url, sourceTab, sendResponse, openModeCache !== OPEN_MODE_TAB_BG);
 }
 
-function openOpenEvidenceQuery(query, sourceTab, sendResponse, meta) {
+function openOpenEvidenceQuery(query, sourceTab, sendResponse, meta, dotflowName) {
   const nextQuery = typeof query === "string" ? query.trim() : "";
   if (!nextQuery) {
     sendResponse?.({ ok: false, error: "Empty query" });
     return;
   }
 
-  const url = buildOpenEvidenceUrl(nextQuery);
-  recordHistory({ ...(meta || { source: "selection" }), url, finalText: nextQuery });
+  const finalQuery = applyDotflow(nextQuery, typeof dotflowName === "string" ? dotflowName : "");
+  const url = buildOpenEvidenceUrl(finalQuery);
+  const historyEntry = { ...(meta || { source: "selection" }), url, finalText: finalQuery };
+  if (dotflowName) historyEntry.dotflowName = dotflowName;
+  recordHistory(historyEntry);
+
+  // sidepanel loads the URL directly into its iframe; skip tab dispatch to avoid double-open
+  if (meta?.source === "sidepanel") {
+    sendResponse?.({ ok: true });
+    return;
+  }
+
   dispatchOpen(url, "OpenEvidence", true, sourceTab, sendResponse);
 }
 
@@ -339,7 +351,14 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "OE_OPEN_QUERY") {
-    openOpenEvidenceQuery(message.query, sender.tab, sendResponse, message.meta);
+    openOpenEvidenceQuery(message.query, sender.tab, sendResponse, message.meta, message.dotflowName);
+    return true;
+  }
+
+  if (message?.type === "OE_FETCH_DOTFLOWS") {
+    fetchDotflows()
+      .then((dotflows) => sendResponse({ ok: true, dotflows }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
   }
 

@@ -21,7 +21,19 @@
       </div>
     </header>
 
-    <p id="panel-empty" class="panel-empty">Select text on a page and choose <strong>Ask OpenEvidence</strong> to load a question here.</p>
+    <div id="panel-empty" class="panel-empty">
+      <p class="panel-empty__hint">Select text on a page and choose <strong>Ask OpenEvidence</strong>, or use the form below.</p>
+      <form id="dotflow-form" class="dotflow-form">
+        <label class="dotflow-form__label" for="dotflow-select">Dotflow</label>
+        <select id="dotflow-select" class="dotflow-form__select">
+          <option value="">— No dotflow —</option>
+        </select>
+        <label class="dotflow-form__label" for="dotflow-query">Question</label>
+        <textarea id="dotflow-query" class="dotflow-form__textarea" rows="3" placeholder="Type your clinical question…"></textarea>
+        <button type="submit" class="dotflow-form__submit">Ask OpenEvidence</button>
+        <p id="dotflow-error" class="dotflow-form__error" hidden></p>
+      </form>
+    </div>
 
     <iframe
       id="oe-frame"

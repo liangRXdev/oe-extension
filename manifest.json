@@ -6,7 +6,8 @@
   "permissions": ["storage", "tabs", "contextMenus", "sidePanel"],
   "host_permissions": ["<all_urls>", "https://api.groq.com/*"],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "type": "module"
   },
   "side_panel": {
     "default_path": "src/sidepanel.html"
