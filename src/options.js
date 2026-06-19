@@ -10,6 +10,7 @@ const GROQ_VALIDATED_STORAGE_KEY = "oeGroqApiKeyValidated";
 const HISTORY_STORAGE_KEY = "oeHistory";
 const HISTORY_ENABLED_STORAGE_KEY = "oeHistoryEnabled";
 const DEFAULT_HISTORY_ENABLED = true;
+const DOTFLOW_NOTES_KEY = "oeDotflowNotes";
 const DEFAULT_WHITELIST = [
   "https://ankiuser.net/study",
   "https://www.openevidence.com/*",
@@ -32,6 +33,8 @@ const saveGroqKeyButton = document.querySelector("#save-groq-key");
 const clearGroqKeyButton = document.querySelector("#clear-groq-key");
 const customPromptsContainer = document.querySelector("#custom-prompts");
 const addCustomPromptButton = document.querySelector("#add-custom-prompt");
+const dotflowNotesContainer = document.querySelector("#dotflow-notes");
+const dotflowNotesEmpty = document.querySelector("#dotflow-notes-empty");
 const groqStatus = document.querySelector("#groq-status");
 const resetButton = document.querySelector("#reset");
 const status = document.querySelector("#status");
@@ -200,6 +203,53 @@ function getCustomPromptRows() {
   );
 }
 
+function createDotflowNoteRow(dotflow, note) {
+  const row = document.createElement("div");
+  row.className = "dotflow-note-row";
+  row.dataset.dotflowId = dotflow.id;
+
+  const nameLabel = document.createElement("label");
+  nameLabel.className = "dotflow-note-row__name";
+  nameLabel.textContent = dotflow.is_default ? `${dotflow.name} ✓` : dotflow.name;
+
+  const noteInput = document.createElement("input");
+  noteInput.type = "text";
+  noteInput.className = "dotflow-note-row__note";
+  noteInput.autocomplete = "off";
+  noteInput.spellcheck = false;
+  noteInput.maxLength = 80;
+  noteInput.placeholder = "Short note (e.g. 台灣臨床整合)";
+  noteInput.value = typeof note === "string" ? note : "";
+
+  row.append(nameLabel, noteInput);
+  dotflowNotesContainer.appendChild(row);
+}
+
+function getDotflowNotes() {
+  const notes = {};
+  dotflowNotesContainer.querySelectorAll(".dotflow-note-row").forEach((row) => {
+    const id = row.dataset.dotflowId;
+    const value = row.querySelector(".dotflow-note-row__note")?.value.trim() || "";
+    if (id && value) {
+      notes[id] = value;
+    }
+  });
+  return notes;
+}
+
+async function loadDotflowNotes() {
+  const { [DOTFLOW_NOTES_KEY]: stored } = await chrome.storage.sync.get({ [DOTFLOW_NOTES_KEY]: {} });
+  const notes = stored && typeof stored === "object" ? stored : {};
+
+  chrome.runtime.sendMessage({ type: "OE_FETCH_DOTFLOWS" }, (response) => {
+    dotflowNotesContainer.textContent = "";
+    const dotflows = chrome.runtime.lastError ? [] : response?.ok && Array.isArray(response.dotflows) ? response.dotflows : [];
+
+    dotflowNotesEmpty.hidden = dotflows.length > 0;
+    dotflows.forEach((df) => createDotflowNoteRow(df, notes[df.id]));
+  });
+}
+
 async function loadOptions() {
   const items = await chrome.storage.sync.get({
     [STORAGE_KEY]: DEFAULT_WHITELIST,
@@ -226,6 +276,8 @@ async function loadOptions() {
   const hasValidatedKey = localItems[GROQ_VALIDATED_STORAGE_KEY] === true && Boolean(groqApiKeyInput.value);
   setGroqStatus(hasValidatedKey ? "Groq API key validated." : "No validated Groq API key.", hasValidatedKey ? "success" : "");
   setGroqKeyEditing(!groqApiKeyInput.value);
+
+  loadDotflowNotes();
 }
 
 form.addEventListener("submit", async (event) => {
@@ -241,7 +293,8 @@ form.addEventListener("submit", async (event) => {
     [OPEN_MODE_STORAGE_KEY]: openMode,
     [ACTIVE_TAB_STORAGE_KEY]: openMode === "tab-active",
     [CUSTOM_PROMPTS_STORAGE_KEY]: customPrompts,
-    [THEME_STORAGE_KEY]: normalizeTheme(themeSelect.value)
+    [THEME_STORAGE_KEY]: normalizeTheme(themeSelect.value),
+    [DOTFLOW_NOTES_KEY]: getDotflowNotes()
   });
   textarea.value = (whitelist.length > 0 ? whitelist : DEFAULT_WHITELIST).join("\n");
   setStatus("Saved.");

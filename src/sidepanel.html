@@ -16,6 +16,7 @@
             <circle cx="12" cy="12" r="3"/>
           </svg>
         </button>
+        <button type="button" id="new-query" class="panel-action" title="New query" aria-label="New query">New query</button>
         <button type="button" id="open-tab" class="panel-action" title="Open in a new tab" aria-label="Open in a new tab" hidden>Open in tab</button>
         <button type="button" id="close-panel" class="panel-action panel-action--close" title="Close side pane" aria-label="Close side pane">Close</button>
       </div>
@@ -30,6 +31,11 @@
         </select>
         <label class="dotflow-form__label" for="dotflow-query">Question</label>
         <textarea id="dotflow-query" class="dotflow-form__textarea" rows="3" placeholder="Type your clinical question…"></textarea>
+        <label class="dotflow-form__label" for="dotflow-mode">Activation</label>
+        <select id="dotflow-mode" class="dotflow-form__select">
+          <option value="inline">Inline prompt (stable)</option>
+          <option value="official">Official dotflow (experimental)</option>
+        </select>
         <button type="submit" class="dotflow-form__submit">Ask OpenEvidence</button>
         <p id="dotflow-error" class="dotflow-form__error" hidden></p>
       </form>
