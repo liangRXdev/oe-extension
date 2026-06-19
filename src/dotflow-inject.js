@@ -22,12 +22,18 @@
   function injectDotflow(bodyText) {
     const body = JSON.parse(bodyText); // throws -> caller keeps original body
     if (!body || typeof body !== "object") return bodyText;
-    if (!body.dotflow || typeof body.dotflow !== "object") {
-      body.dotflow = { id: dotflowId };
-    } else if (!body.dotflow.id) {
-      body.dotflow.id = dotflowId;
+    // Confirmed via captured POST /api/article: the real schema nests dotflow
+    // under `inputs` ({ article_type, inputs: { question, dotflow: { id } }, ... }).
+    // Target inputs when present; fall back to top level only if the shape differs.
+    const target = body.inputs && typeof body.inputs === "object" ? body.inputs : body;
+    if (!target.dotflow || typeof target.dotflow !== "object") {
+      target.dotflow = { id: dotflowId };
+    } else if (!target.dotflow.id) {
+      target.dotflow.id = dotflowId;
     }
-    return JSON.stringify(body);
+    const out = JSON.stringify(body);
+    trace("final body:", out);
+    return out;
   }
 
   // ---- fetch ----
