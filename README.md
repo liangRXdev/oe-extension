@@ -14,6 +14,12 @@ right next to the current tab. With a validated Groq API key, it can also rewrit
 selected recall-style text into editable foreground questions before sending them
 to OpenEvidence.
 
+> **Personal fork note (liangRXdev).** This fork adds a **Dotflows** integration
+> on top of the upstream [htlin222/oe-extension](https://github.com/htlin222/oe-extension):
+> it lets you pick one of your OpenEvidence Dotflows in the side panel and have it
+> officially activated on the answer you send. Everything else tracks upstream. See
+> [Dotflows (fork addition)](#dotflows-fork-addition) below. Maintained for personal use.
+
 ![Selection toolbar demo](docs/demo-toolbar.png)
 
 ## Features
@@ -99,6 +105,40 @@ Each custom prompt has:
 
 The model output is displayed in an editable panel. You can copy it or ask
 OpenEvidence with the edited result.
+
+## Dotflows (fork addition)
+
+> This section describes a feature added in this personal fork; it is not part of
+> upstream `htlin222/oe-extension`.
+
+[Dotflows](https://www.openevidence.com) are OpenEvidence's reusable answer
+workflows (a saved `explanation_prompt` applied to a question). This fork lets you
+attach one of *your own* Dotflows to a question straight from the extension, so the
+answer is generated with that Dotflow already active — no manual selection on the
+OpenEvidence page.
+
+**How it works**
+
+- The side panel fetches your Dotflow list from
+  `https://www.openevidence.com/api/dotflows/dot-flows` using your existing logged-in
+  session (`credentials: "include"`), and caches it locally for 30 minutes
+  (`chrome.storage.local`, key `oeDotflowsCache`).
+- Pick a Dotflow in the floating selector. The extension appends
+  `oe_ext_dotflow_id=<id>` to the `openevidence.com/ask` URL it opens.
+- A `document_start`, `MAIN`-world content script (`src/dotflow-inject.js`) patches
+  `fetch` and `XMLHttpRequest` on that page. When OpenEvidence submits the question
+  (`POST /api/article`), it injects `dotflow: { id }` into the request body under the
+  confirmed `inputs` schema, then restores the original network functions.
+- The injection is one-shot per page load and touches only the matching OpenEvidence
+  submit request; all other traffic is untouched.
+
+**Notes / limitations**
+
+- Requires being logged in to OpenEvidence in the same browser profile.
+- Relies on OpenEvidence's private `/api/dotflows` and `/api/article` shapes, which
+  may change without notice; if activation stops working, append `&oe_ext_debug=1`
+  to the `/ask` URL to log every POST endpoint seen and re-verify the schema.
+- Scoped to `https://www.openevidence.com/ask*` via `manifest.json` content scripts.
 
 ## OpenEvidence URL
 
