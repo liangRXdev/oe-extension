@@ -6,7 +6,8 @@
   "permissions": ["storage", "tabs", "contextMenus", "sidePanel"],
   "host_permissions": ["<all_urls>", "https://api.groq.com/*"],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "src/background.js",
+    "type": "module"
   },
   "side_panel": {
     "default_path": "src/sidepanel.html"
@@ -23,6 +24,13 @@
       "js": ["src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.openevidence.com/ask*"],
+      "js": ["src/dotflow-inject.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
     }
   ],
   "options_page": "src/options.html",

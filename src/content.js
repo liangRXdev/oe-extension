@@ -2,6 +2,10 @@ const STORAGE_KEY = "oeWhitelist";
 const CUSTOM_PROMPTS_STORAGE_KEY = "oeCustomPrompts";
 const THEME_STORAGE_KEY = "oeTheme";
 const GROQ_VALIDATED_STORAGE_KEY = "oeGroqApiKeyValidated";
+const DOTFLOW_MODE_KEY = "oeDotflowMode";
+const DEFAULT_DOTFLOW_MODE = "inline";
+const DOTFLOWS_CACHE_KEY = "oeDotflowsCache"; // chrome.storage.local, written by dotflows.js
+const DOTFLOW_NOTES_KEY = "oeDotflowNotes"; // chrome.storage.sync, { [dotflowId]: "note" }
 const DEFAULT_WHITELIST = [
   "https://ankiuser.net/study",
   "https://www.openevidence.com/*",
@@ -26,6 +30,10 @@ let whitelist = DEFAULT_WHITELIST;
 let groqKeyValidated = false;
 let customPrompts = [];
 let theme = DEFAULT_THEME;
+let dotflows = [];
+let dotflowMode = DEFAULT_DOTFLOW_MODE;
+let dotflowNotes = {}; // user-maintained short notes, keyed by dotflow id
+let selectedDotflowId = ""; // persists across toolbars so the choice sticks
 let toolbar = null;
 let resultPanel = null;
 let selectedText = "";
@@ -77,13 +85,19 @@ function loadWhitelist() {
     {
       [STORAGE_KEY]: DEFAULT_WHITELIST,
       [CUSTOM_PROMPTS_STORAGE_KEY]: [],
-      [THEME_STORAGE_KEY]: DEFAULT_THEME
+      [THEME_STORAGE_KEY]: DEFAULT_THEME,
+      [DOTFLOW_MODE_KEY]: DEFAULT_DOTFLOW_MODE,
+      [DOTFLOW_NOTES_KEY]: {}
     },
     (items) => {
       const value = items[STORAGE_KEY];
       whitelist = Array.isArray(value) && value.length > 0 ? value : DEFAULT_WHITELIST;
       customPrompts = normalizeCustomPrompts(items[CUSTOM_PROMPTS_STORAGE_KEY]);
       theme = normalizeTheme(items[THEME_STORAGE_KEY]);
+      dotflowMode = items[DOTFLOW_MODE_KEY] === "official" ? "official" : "inline";
+      dotflowNotes = items[DOTFLOW_NOTES_KEY] && typeof items[DOTFLOW_NOTES_KEY] === "object"
+        ? items[DOTFLOW_NOTES_KEY]
+        : {};
     }
   );
 }
@@ -92,6 +106,34 @@ function loadGroqStatus() {
   chrome.storage.local.get({ [GROQ_VALIDATED_STORAGE_KEY]: false }, (items) => {
     groqKeyValidated = items[GROQ_VALIDATED_STORAGE_KEY] === true;
   });
+}
+
+function loadDotflows() {
+  chrome.runtime.sendMessage({ type: "OE_FETCH_DOTFLOWS" }, (response) => {
+    if (chrome.runtime.lastError) {
+      return;
+    }
+    if (response?.ok && Array.isArray(response.dotflows)) {
+      dotflows = response.dotflows;
+    }
+  });
+}
+
+// Mirror the sidepanel: inline (default) prepends the dotflow prompt text;
+// official sends the raw question + a dotflowId the background turns into the
+// URL param that the MAIN-world interceptor uses on POST /api/article.
+function buildDotflowQuery(rawQuery) {
+  const flow = selectedDotflowId ? dotflows.find((d) => d.id === selectedDotflowId) : null;
+  if (!flow) {
+    return { query: rawQuery, dotflowId: "", dotflowName: "" };
+  }
+  if (dotflowMode === "official") {
+    return { query: rawQuery, dotflowId: flow.id, dotflowName: flow.name };
+  }
+  const query = flow.explanation_prompt
+    ? `${flow.explanation_prompt}\n\n---\n\n${rawQuery}`
+    : rawQuery;
+  return { query, dotflowId: "", dotflowName: flow.name };
 }
 
 function removeButton() {
@@ -222,12 +264,18 @@ function getPanelPosition() {
   return { left, top, width: panelWidth };
 }
 
-function openQuery(query, meta) {
+function openQuery(query, meta, dotflow) {
   const nextQuery = typeof query === "string" ? query.trim() : "";
   if (nextQuery) {
     const message = { type: "OE_OPEN_QUERY", query: nextQuery };
     if (meta) {
       message.meta = meta;
+    }
+    if (dotflow?.dotflowId) {
+      message.dotflowId = dotflow.dotflowId;
+    }
+    if (dotflow?.dotflowName) {
+      message.dotflowName = dotflow.dotflowName;
     }
     chrome.runtime.sendMessage(message);
   }
@@ -304,6 +352,70 @@ function makeToolbarButton(className, text, title) {
   });
 
   return nextButton;
+}
+
+function formatDotflowLabel(df, note) {
+  const base = df.is_default ? `${df.name} ✓` : df.name;
+  const trimmed = typeof note === "string" ? note.trim() : "";
+  if (!trimmed) {
+    return base;
+  }
+  const short = trimmed.length > 40 ? `${trimmed.slice(0, 39)}…` : trimmed;
+  return `${base} — ${short}`;
+}
+
+function populateDotflowOptions(picker) {
+  picker.textContent = "";
+
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "No dotflow";
+  picker.appendChild(none);
+
+  for (const df of dotflows) {
+    const opt = document.createElement("option");
+    opt.value = df.id;
+    opt.textContent = formatDotflowLabel(df, dotflowNotes[df.id]);
+    if (dotflowNotes[df.id]) {
+      opt.title = dotflowNotes[df.id];
+    }
+    picker.appendChild(opt);
+  }
+
+  // Keep the prior choice if it still exists; otherwise fall back to "No dotflow".
+  picker.value = dotflows.some((d) => d.id === selectedDotflowId) ? selectedDotflowId : "";
+  selectedDotflowId = picker.value;
+}
+
+// Repopulate the picker of a currently-open toolbar so a fresh dotflow catalog
+// shows up without a page reload.
+function refreshOpenDotflowPicker() {
+  const picker = toolbar?.querySelector(".oe-selection-dotflow");
+  if (picker) {
+    populateDotflowOptions(picker);
+  }
+}
+
+function makeDotflowPicker() {
+  const picker = document.createElement("select");
+  picker.className = "oe-selection-dotflow";
+  picker.title = "Apply a Dotflow to this question";
+  picker.setAttribute("aria-label", "Dotflow");
+
+  populateDotflowOptions(picker);
+
+  // Native <select> must keep its default behaviour to open, so DON'T
+  // preventDefault here (that would block the dropdown) — only stop the toolbar's
+  // own handlers from firing. The selectionchange guard (uiHasFocus) keeps the
+  // toolbar alive while the picker steals focus and collapses the text selection.
+  picker.addEventListener("mousedown", (event) => event.stopPropagation());
+  picker.addEventListener("click", (event) => event.stopPropagation());
+  picker.addEventListener("change", (event) => {
+    event.stopPropagation();
+    selectedDotflowId = picker.value;
+  });
+
+  return picker;
 }
 
 function getButtonIconName(text) {
@@ -413,12 +525,17 @@ function ensureToolbar() {
     event.preventDefault();
     event.stopPropagation();
 
-    const query = selectedText || getSelectionText();
+    const raw = selectedText || getSelectionText();
+    const built = buildDotflowQuery(raw);
     removeButton();
-    openQuery(query);
+    openQuery(built.query, undefined, built);
   });
 
   toolbar.appendChild(askButton);
+
+  if (dotflows.length > 0) {
+    toolbar.appendChild(makeDotflowPicker());
+  }
 
   const upToDateButton = makeToolbarButton(
     "oe-selection-button oe-selection-button--uptodate",
@@ -827,9 +944,17 @@ function startTrackingUi() {
   }
 }
 
+// True while focus is inside our toolbar — e.g. the native dotflow <select> is
+// open. Opening it collapses the page selection, which would otherwise trip the
+// selectionchange teardown below and yank the toolbar away mid-interaction.
+function uiHasFocus() {
+  const active = document.activeElement;
+  return Boolean(toolbar && active && toolbar.contains(active));
+}
+
 document.addEventListener("mouseup", showButton, true);
 document.addEventListener("selectionchange", () => {
-  if (!getSelectionText()) {
+  if (!getSelectionText() && !uiHasFocus()) {
     removeButton();
   }
 });
@@ -857,20 +982,44 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       applyThemeToUi();
     }
 
+    if (changes[DOTFLOW_MODE_KEY]) {
+      dotflowMode = changes[DOTFLOW_MODE_KEY].newValue === "official" ? "official" : "inline";
+    }
+
+    if (changes[DOTFLOW_NOTES_KEY]) {
+      const next = changes[DOTFLOW_NOTES_KEY].newValue;
+      dotflowNotes = next && typeof next === "object" ? next : {};
+      refreshOpenDotflowPicker();
+    }
+
     return;
   }
 
-  if (areaName === "local" && changes[GROQ_VALIDATED_STORAGE_KEY]) {
-    groqKeyValidated = changes[GROQ_VALIDATED_STORAGE_KEY].newValue === true;
-    removeButtonImmediately();
+  if (areaName === "local") {
+    if (changes[GROQ_VALIDATED_STORAGE_KEY]) {
+      groqKeyValidated = changes[GROQ_VALIDATED_STORAGE_KEY].newValue === true;
+      removeButtonImmediately();
+    }
+
+    // dotflows.js refreshed its cache (TTL expiry / new fetch) — pick up the new
+    // catalog live so an already-open tab/toolbar sees added dotflows without a reload.
+    if (changes[DOTFLOWS_CACHE_KEY]) {
+      const next = changes[DOTFLOWS_CACHE_KEY].newValue;
+      if (next && Array.isArray(next.data)) {
+        dotflows = next.data;
+        refreshOpenDotflowPicker();
+      }
+    }
   }
 });
 
 loadWhitelist();
 loadGroqStatus();
+loadDotflows();
 
 colorSchemeQuery?.addEventListener("change", () => {
   if (theme === "system") {
     applyThemeToUi();
   }
 });
+

@@ -166,6 +166,34 @@ input[readonly] {
   grid-row: 1 / span 2;
 }
 
+.dotflow-notes {
+  display: grid;
+  gap: 8px;
+}
+
+.dotflow-note-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--oe-border-soft);
+  border-radius: 6px;
+  background: var(--oe-bg);
+}
+
+.dotflow-note-row__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dotflow-notes__empty {
+  color: var(--oe-muted);
+  font-size: 13px;
+}
+
 .actions {
   display: flex;
   gap: 8px;
@@ -404,5 +432,9 @@ form[hidden] {
   .custom-prompt-row button {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .dotflow-note-row {
+    grid-template-columns: 1fr;
   }
 }
