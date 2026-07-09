@@ -31,6 +31,12 @@
       "run_at": "document_start",
       "all_frames": true,
       "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.openevidence.com/*"],
+      "js": ["src/oe-sidepane.js"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "options_page": "src/options.html",

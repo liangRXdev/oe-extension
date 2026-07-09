@@ -1,13 +1,13 @@
 import { fetchDotflows } from "./dotflows.js";
 
 const DEFAULT_WHITELIST = [
-  "https://ankiuser.net/study",
-  "https://www.openevidence.com/*",
-  "http://uptodate.com/*",
-  "nejm.org/*",
-  "https://accessmedicine.mhmedical.com/*",
-  "https://www.clinicalkey.com/*",
-  "file:///*"
+	"https://ankiuser.net/study",
+	"https://www.openevidence.com/*",
+	"http://uptodate.com/*",
+	"nejm.org/*",
+	"https://accessmedicine.mhmedical.com/*",
+	"https://www.clinicalkey.com/*",
+	"file:///*",
 ];
 const STORAGE_KEY = "oeWhitelist";
 const ACTIVE_TAB_STORAGE_KEY = "oeOpenInActiveTab";
@@ -33,80 +33,96 @@ Export as JSON:
 {"question":"$output"}`;
 
 function buildOpenEvidenceUrl(query, dotflowId) {
-  const params = new URLSearchParams({
-    query,
-    configName: "prod",
-    attachments: "[]",
-    _rsc: "1pln2"
-  });
-  if (dotflowId) params.set("oe_ext_dotflow_id", dotflowId);
-  return `https://www.openevidence.com/ask?${params.toString()}`;
+	const params = new URLSearchParams({
+		query,
+		configName: "prod",
+		attachments: "[]",
+		_rsc: "1pln2",
+	});
+	if (dotflowId) params.set("oe_ext_dotflow_id", dotflowId);
+
+	return `https://www.openevidence.com/ask?${params.toString()}`;
 }
 
 function buildUpToDateUrl(query) {
-  const params = new URLSearchParams({ search: query });
-  return `https://www.uptodate.com/contents/search?${params.toString()}`;
+	const params = new URLSearchParams({ search: query });
+	return `https://www.uptodate.com/contents/search?${params.toString()}`;
 }
 
 function buildGoogleUrl(query) {
-  const params = new URLSearchParams({ q: query, sourceid: "chrome", ie: "UTF-8" });
-  return `https://www.google.com/search?${params.toString()}`;
+	const params = new URLSearchParams({
+		q: query,
+		sourceid: "chrome",
+		ie: "UTF-8",
+	});
+	return `https://www.google.com/search?${params.toString()}`;
 }
 
 let historyIdCounter = 0;
 
 function buildHistoryEntry(entry) {
-  historyIdCounter += 1;
-  const normalized = {
-    id: `${Date.now()}-${historyIdCounter}`,
-    timestamp: Date.now(),
-    url: typeof entry.url === "string" ? entry.url : "",
-    finalText: typeof entry.finalText === "string" ? entry.finalText : "",
-    source: typeof entry.source === "string" ? entry.source : "selection"
-  };
+	historyIdCounter += 1;
+	const normalized = {
+		id: `${Date.now()}-${historyIdCounter}`,
+		timestamp: Date.now(),
+		url: typeof entry.url === "string" ? entry.url : "",
+		finalText: typeof entry.finalText === "string" ? entry.finalText : "",
+		source: typeof entry.source === "string" ? entry.source : "selection",
+	};
 
-  if (typeof entry.original === "string" && entry.original) {
-    normalized.original = entry.original;
-  }
-  if (typeof entry.promptName === "string" && entry.promptName) {
-    normalized.promptName = entry.promptName;
-  }
-  if (typeof entry.promptInstruction === "string" && entry.promptInstruction) {
-    normalized.promptInstruction = entry.promptInstruction;
-  }
-  if (typeof entry.transformed === "string" && entry.transformed) {
-    normalized.transformed = entry.transformed;
-  }
+	if (typeof entry.original === "string" && entry.original) {
+		normalized.original = entry.original;
+	}
+	if (typeof entry.promptName === "string" && entry.promptName) {
+		normalized.promptName = entry.promptName;
+	}
+	if (typeof entry.promptInstruction === "string" && entry.promptInstruction) {
+		normalized.promptInstruction = entry.promptInstruction;
+	}
+	if (typeof entry.transformed === "string" && entry.transformed) {
+		normalized.transformed = entry.transformed;
+	}
 
-  return normalized;
+	return normalized;
 }
 
 function recordHistory(entry) {
-  chrome.storage.local.get(
-    {
-      [HISTORY_ENABLED_STORAGE_KEY]: DEFAULT_HISTORY_ENABLED,
-      [HISTORY_STORAGE_KEY]: []
-    },
-    (items) => {
-      if (items[HISTORY_ENABLED_STORAGE_KEY] === false) {
-        return;
-      }
+	chrome.storage.local.get(
+		{
+			[HISTORY_ENABLED_STORAGE_KEY]: DEFAULT_HISTORY_ENABLED,
+			[HISTORY_STORAGE_KEY]: [],
+		},
+		(items) => {
+			if (items[HISTORY_ENABLED_STORAGE_KEY] === false) {
+				return;
+			}
 
-      const existing = Array.isArray(items[HISTORY_STORAGE_KEY]) ? items[HISTORY_STORAGE_KEY] : [];
-      const next = [buildHistoryEntry(entry), ...existing].slice(0, HISTORY_LIMIT);
-      chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: next });
-    }
-  );
+			const existing = Array.isArray(items[HISTORY_STORAGE_KEY])
+				? items[HISTORY_STORAGE_KEY]
+				: [];
+			const next = [buildHistoryEntry(entry), ...existing].slice(
+				0,
+				HISTORY_LIMIT,
+			);
+			chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: next });
+		},
+	);
 }
 
 function resolveOpenMode(items) {
-  const mode = items[OPEN_MODE_STORAGE_KEY];
-  if (mode === OPEN_MODE_TAB_BG || mode === OPEN_MODE_TAB_ACTIVE || mode === OPEN_MODE_SIDE_PANE) {
-    return mode;
-  }
+	const mode = items[OPEN_MODE_STORAGE_KEY];
+	if (
+		mode === OPEN_MODE_TAB_BG ||
+		mode === OPEN_MODE_TAB_ACTIVE ||
+		mode === OPEN_MODE_SIDE_PANE
+	) {
+		return mode;
+	}
 
-  // Migrate the legacy boolean for users who set it before the 3-way mode.
-  return items[ACTIVE_TAB_STORAGE_KEY] === true ? OPEN_MODE_TAB_ACTIVE : DEFAULT_OPEN_MODE;
+	// Migrate the legacy boolean for users who set it before the 3-way mode.
+	return items[ACTIVE_TAB_STORAGE_KEY] === true
+		? OPEN_MODE_TAB_ACTIVE
+		: DEFAULT_OPEN_MODE;
 }
 
 // Cached synchronously so the side-panel open() call can run inside the user
@@ -115,389 +131,433 @@ function resolveOpenMode(items) {
 let openModeCache = DEFAULT_OPEN_MODE;
 
 function loadOpenMode() {
-  chrome.storage.sync.get(
-    { [OPEN_MODE_STORAGE_KEY]: null, [ACTIVE_TAB_STORAGE_KEY]: DEFAULT_OPEN_IN_ACTIVE_TAB },
-    (items) => {
-      openModeCache = resolveOpenMode(items);
-    }
-  );
+	chrome.storage.sync.get(
+		{
+			[OPEN_MODE_STORAGE_KEY]: null,
+			[ACTIVE_TAB_STORAGE_KEY]: DEFAULT_OPEN_IN_ACTIVE_TAB,
+		},
+		(items) => {
+			openModeCache = resolveOpenMode(items);
+		},
+	);
 }
 
 loadOpenMode();
 
 function buildTabOptions(url, active, sourceTab) {
-  const tabOptions = { url, active };
+	const tabOptions = { url, active };
 
-  if (Number.isInteger(sourceTab?.index)) {
-    tabOptions.index = sourceTab.index + 1;
-  }
+	if (Number.isInteger(sourceTab?.index)) {
+		tabOptions.index = sourceTab.index + 1;
+	}
 
-  return tabOptions;
+	return tabOptions;
 }
 
 function openInTab(url, sourceTab, sendResponse, active) {
-  const tabOptions = buildTabOptions(url, active, sourceTab);
+	const tabOptions = buildTabOptions(url, active, sourceTab);
 
-  chrome.tabs
-    .create(tabOptions)
-    .then((tab) => {
-      // "Switch to it" must also pull the window forward, not just mark the tab
-      // active — this is what the old single-checkbox path was missing.
-      if (active && tab?.windowId != null) {
-        chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
-      }
-      sendResponse?.({ ok: true });
-    })
-    .catch((error) => sendResponse?.({ ok: false, error: error.message }));
+	chrome.tabs
+		.create(tabOptions)
+		.then((tab) => {
+			// "Switch to it" must also pull the window forward, not just mark the tab
+			// active — this is what the old single-checkbox path was missing.
+			if (active && tab?.windowId != null) {
+				chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+			}
+			sendResponse?.({ ok: true });
+		})
+		.catch((error) => sendResponse?.({ ok: false, error: error.message }));
 }
 
 function openInSidePanel(url, label, sourceTab, sendResponse) {
-  const tabId = sourceTab?.id;
-  if (tabId == null || !chrome.sidePanel?.open) {
-    openInTab(url, sourceTab, sendResponse, true);
-    return;
-  }
+	const tabId = sourceTab?.id;
+	if (tabId == null || !chrome.sidePanel?.open) {
+		openInTab(url, sourceTab, sendResponse, true);
+		return;
+	}
 
-  // Open first (still inside the gesture), THEN stash the URL. The panel page
-  // reads it from storage.session on load / via onChanged.
-  const openPromise = chrome.sidePanel.open({ tabId });
-  chrome.storage.session.set({ [SIDE_PANEL_URL_KEY]: { url, label, ts: Date.now() } });
+	// Open first (still inside the gesture), THEN stash the URL. The panel page
+	// reads it from storage.session on load / via onChanged.
+	const openPromise = chrome.sidePanel.open({ tabId });
+	chrome.storage.session.set({
+		[SIDE_PANEL_URL_KEY]: { url, label, ts: Date.now() },
+	});
 
-  openPromise
-    .then(() => sendResponse?.({ ok: true }))
-    .catch(() => openInTab(url, sourceTab, sendResponse, true));
+	openPromise
+		.then(() => sendResponse?.({ ok: true }))
+		.catch(() => openInTab(url, sourceTab, sendResponse, true));
 }
 
 // Routes a query URL by the active open mode. Frameable engines (OpenEvidence,
 // UpToDate) use the side pane in side-pane mode; Google can't be iframed
 // (X-Frame-Options: SAMEORIGIN), so it falls back to a focused tab.
 function dispatchOpen(url, label, frameable, sourceTab, sendResponse) {
-  if (openModeCache === OPEN_MODE_SIDE_PANE && frameable) {
-    openInSidePanel(url, label, sourceTab, sendResponse);
-    return;
-  }
+	if (openModeCache === OPEN_MODE_SIDE_PANE && frameable) {
+		openInSidePanel(url, label, sourceTab, sendResponse);
+		return;
+	}
 
-  // Background only in plain "new tab" mode; otherwise pull focus (this also
-  // covers the side-pane fallback for non-frameable engines).
-  openInTab(url, sourceTab, sendResponse, openModeCache !== OPEN_MODE_TAB_BG);
+	// Background only in plain "new tab" mode; otherwise pull focus (this also
+	// covers the side-pane fallback for non-frameable engines).
+	openInTab(url, sourceTab, sendResponse, openModeCache !== OPEN_MODE_TAB_BG);
 }
 
-function openOpenEvidenceQuery(query, sourceTab, sendResponse, meta, dotflowName, dotflowId) {
-  const nextQuery = typeof query === "string" ? query.trim() : "";
-  if (!nextQuery) {
-    sendResponse?.({ ok: false, error: "Empty query" });
-    return;
-  }
+function openOpenEvidenceQuery(
+	query,
+	sourceTab,
+	sendResponse,
+	meta,
+	dotflowName,
+	dotflowId,
+) {
+	const nextQuery = typeof query === "string" ? query.trim() : "";
+	if (!nextQuery) {
+		sendResponse?.({ ok: false, error: "Empty query" });
+		return;
+	}
 
-  const url = buildOpenEvidenceUrl(nextQuery, typeof dotflowId === "string" ? dotflowId : "");
-  const historyEntry = { ...(meta || { source: "selection" }), url, finalText: nextQuery };
-  if (dotflowName) historyEntry.dotflowName = dotflowName;
-  if (dotflowId) historyEntry.dotflowId = dotflowId;
-  recordHistory(historyEntry);
+	const url = buildOpenEvidenceUrl(
+		nextQuery,
+		typeof dotflowId === "string" ? dotflowId : "",
+	);
+	const historyEntry = {
+		...(meta || { source: "selection" }),
+		url,
+		finalText: nextQuery,
+	};
+	if (dotflowName) historyEntry.dotflowName = dotflowName;
+	if (dotflowId) historyEntry.dotflowId = dotflowId;
+	recordHistory(historyEntry);
 
-  // sidepanel loads the URL directly into its iframe; skip tab dispatch to avoid double-open
-  if (meta?.source === "sidepanel") {
-    sendResponse?.({ ok: true });
-    return;
-  }
+	// sidepanel loads the URL directly into its iframe; skip tab dispatch to avoid double-open
+	if (meta?.source === "sidepanel") {
+		sendResponse?.({ ok: true });
+		return;
+	}
 
-  dispatchOpen(url, "OpenEvidence", true, sourceTab, sendResponse);
+	dispatchOpen(url, "OpenEvidence", true, sourceTab, sendResponse);
 }
 
 function openUpToDateQuery(query, sourceTab, sendResponse) {
-  const nextQuery = typeof query === "string" ? query.trim() : "";
-  if (!nextQuery) {
-    sendResponse?.({ ok: false, error: "Empty query" });
-    return;
-  }
+	const nextQuery = typeof query === "string" ? query.trim() : "";
+	if (!nextQuery) {
+		sendResponse?.({ ok: false, error: "Empty query" });
+		return;
+	}
 
-  dispatchOpen(buildUpToDateUrl(nextQuery), "UpToDate", true, sourceTab, sendResponse);
+	dispatchOpen(
+		buildUpToDateUrl(nextQuery),
+		"UpToDate",
+		true,
+		sourceTab,
+		sendResponse,
+	);
 }
 
 function openGoogleQuery(query, sourceTab, sendResponse) {
-  const nextQuery = typeof query === "string" ? query.trim() : "";
-  if (!nextQuery) {
-    sendResponse?.({ ok: false, error: "Empty query" });
-    return;
-  }
+	const nextQuery = typeof query === "string" ? query.trim() : "";
+	if (!nextQuery) {
+		sendResponse?.({ ok: false, error: "Empty query" });
+		return;
+	}
 
-  dispatchOpen(buildGoogleUrl(nextQuery), "Google", false, sourceTab, sendResponse);
+	dispatchOpen(
+		buildGoogleUrl(nextQuery),
+		"Google",
+		false,
+		sourceTab,
+		sendResponse,
+	);
 }
 
 async function callGroq(apiKey, messages, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
-  const body = {
-    model: GROQ_MODEL,
-    messages: typeof messages === "string" ? [{ role: "user", content: messages }] : messages,
-    temperature: 0.2
-  };
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
+	const body = {
+		model: GROQ_MODEL,
+		messages:
+			typeof messages === "string"
+				? [{ role: "user", content: messages }]
+				: messages,
+		temperature: 0.2,
+	};
 
-  if (options.jsonMode) {
-    body.response_format = { type: "json_object" };
-  }
+	if (options.jsonMode) {
+		body.response_format = { type: "json_object" };
+	}
 
-  try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    });
+	try {
+		const response = await fetch(
+			"https://api.groq.com/openai/v1/chat/completions",
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			},
+		);
 
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const message = data?.error?.message || `Groq request failed with HTTP ${response.status}`;
-      throw new Error(message);
-    }
+		const data = await response.json().catch(() => ({}));
+		if (!response.ok) {
+			const message =
+				data?.error?.message ||
+				`Groq request failed with HTTP ${response.status}`;
+			throw new Error(message);
+		}
 
-    const content = data?.choices?.[0]?.message?.content?.trim();
-    if (!content) {
-      throw new Error("Groq returned an empty response");
-    }
+		const content = data?.choices?.[0]?.message?.content?.trim();
+		if (!content) {
+			throw new Error("Groq returned an empty response");
+		}
 
-    return content;
-  } catch (error) {
-    if (error.name === "AbortError") {
-      throw new Error("Groq request timed out");
-    }
+		return content;
+	} catch (error) {
+		if (error.name === "AbortError") {
+			throw new Error("Groq request timed out");
+		}
 
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+		throw error;
+	} finally {
+		clearTimeout(timeoutId);
+	}
 }
 
 function extractPicoQuestion(content) {
-  const trimmed = typeof content === "string" ? content.trim() : "";
-  if (!trimmed) {
-    throw new Error("Groq returned an empty response");
-  }
+	const trimmed = typeof content === "string" ? content.trim() : "";
+	if (!trimmed) {
+		throw new Error("Groq returned an empty response");
+	}
 
-  try {
-    const parsed = JSON.parse(trimmed);
-    const question = typeof parsed.question === "string" ? parsed.question.trim() : "";
-    if (question) {
-      return question;
-    }
-  } catch (_error) {
-    const match = trimmed.match(/"question"\s*:\s*"((?:\\.|[^"\\])*)"/);
-    if (match) {
-      const parsed = JSON.parse(`{"question":"${match[1]}"}`);
-      const question = parsed.question.trim();
-      if (question) {
-        return question;
-      }
-    }
-  }
+	try {
+		const parsed = JSON.parse(trimmed);
+		const question =
+			typeof parsed.question === "string" ? parsed.question.trim() : "";
+		if (question) {
+			return question;
+		}
+	} catch (_error) {
+		const match = trimmed.match(/"question"\s*:\s*"((?:\\.|[^"\\])*)"/);
+		if (match) {
+			const parsed = JSON.parse(`{"question":"${match[1]}"}`);
+			const question = parsed.question.trim();
+			if (question) {
+				return question;
+			}
+		}
+	}
 
-  return trimmed;
-}
-
-function buildJsonTransformMessages(userPrompt, selection) {
-  return [
-    {
-      role: "system",
-      content:
-        'Apply the user prompt to the selected text. Return valid JSON only with exactly one key: "question". The value must contain only the transformed output, with no explanation, no markdown, no label echo, and no extra keys.'
-    },
-    {
-      role: "user",
-      content: `User prompt:
-${userPrompt.trim()}
-
-Selected text:
-${selection}
-
-Export as JSON:
-{"question":"$output"}`
-    }
-  ];
+	return trimmed;
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const stored = await chrome.storage.sync.get([STORAGE_KEY, ACTIVE_TAB_STORAGE_KEY, OPEN_MODE_STORAGE_KEY]);
-  const defaults = {};
+	const stored = await chrome.storage.sync.get([
+		STORAGE_KEY,
+		ACTIVE_TAB_STORAGE_KEY,
+		OPEN_MODE_STORAGE_KEY,
+	]);
+	const defaults = {};
 
-  if (!stored[STORAGE_KEY]) {
-    defaults[STORAGE_KEY] = DEFAULT_WHITELIST;
-  }
+	if (!stored[STORAGE_KEY]) {
+		defaults[STORAGE_KEY] = DEFAULT_WHITELIST;
+	}
 
-  // Seed the 3-way mode, migrating the legacy "open in active tab" boolean.
-  if (
-    stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_TAB_BG &&
-    stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_TAB_ACTIVE &&
-    stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_SIDE_PANE
-  ) {
-    defaults[OPEN_MODE_STORAGE_KEY] = resolveOpenMode(stored);
-  }
+	// Seed the 3-way mode, migrating the legacy "open in active tab" boolean.
+	if (
+		stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_TAB_BG &&
+		stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_TAB_ACTIVE &&
+		stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_SIDE_PANE
+	) {
+		defaults[OPEN_MODE_STORAGE_KEY] = resolveOpenMode(stored);
+	}
 
-  if (Object.keys(defaults).length > 0) {
-    await chrome.storage.sync.set(defaults);
-  }
+	if (Object.keys(defaults).length > 0) {
+		await chrome.storage.sync.set(defaults);
+	}
 
-  loadOpenMode();
+	loadOpenMode();
 
-  await chrome.contextMenus.removeAll();
-  chrome.contextMenus.create({
-    id: ASK_CONTEXT_MENU_ID,
-    title: "Ask OpenEvidence",
-    contexts: ["selection"]
-  });
+	await chrome.contextMenus.removeAll();
+	chrome.contextMenus.create({
+		id: ASK_CONTEXT_MENU_ID,
+		title: "Ask OpenEvidence",
+		contexts: ["selection"],
+	});
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "OE_OPEN_QUERY") {
-    openOpenEvidenceQuery(
-      message.query,
-      sender.tab,
-      sendResponse,
-      message.meta,
-      message.dotflowName,
-      message.dotflowId
-    );
-    return true;
-  }
+	if (message?.type === "OE_OPEN_QUERY") {
+		openOpenEvidenceQuery(
+			message.query,
+			sender.tab,
+			sendResponse,
+			message.meta,
+			message.dotflowName,
+			message.dotflowId,
+		);
+		return true;
+	}
 
-  if (message?.type === "OE_FETCH_DOTFLOWS") {
-    fetchDotflows()
-      .then((dotflows) => sendResponse({ ok: true, dotflows }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
-    return true;
-  }
+	if (message?.type === "OE_FETCH_DOTFLOWS") {
+		fetchDotflows()
+			.then((dotflows) => sendResponse({ ok: true, dotflows }))
+			.catch((error) => sendResponse({ ok: false, error: error.message }));
+		return true;
+	}
 
-  if (message?.type === "OE_OPEN_UPTODATE") {
-    openUpToDateQuery(message.query, sender.tab, sendResponse);
-    return true;
-  }
+	if (message?.type === "OE_OPEN_UPTODATE") {
+		openUpToDateQuery(message.query, sender.tab, sendResponse);
+		return true;
+	}
 
-  if (message?.type === "OE_OPEN_GOOGLE") {
-    openGoogleQuery(message.query, sender.tab, sendResponse);
-    return true;
-  }
+	if (message?.type === "OE_OPEN_GOOGLE") {
+		openGoogleQuery(message.query, sender.tab, sendResponse);
+		return true;
+	}
 
-  if (message?.type === "OE_VALIDATE_GROQ_KEY") {
-    const apiKey = typeof message.apiKey === "string" ? message.apiKey.trim() : "";
-    if (!apiKey) {
-      sendResponse({ ok: false, error: "API key is required" });
-      return false;
-    }
+	if (message?.type === "OE_VALIDATE_GROQ_KEY") {
+		const apiKey =
+			typeof message.apiKey === "string" ? message.apiKey.trim() : "";
+		if (!apiKey) {
+			sendResponse({ ok: false, error: "API key is required" });
+			return false;
+		}
 
-    callGroq(apiKey, "Reply with exactly: ok")
-      .then(async () => {
-        await chrome.storage.local.set({
-          [GROQ_API_KEY_STORAGE_KEY]: apiKey,
-          [GROQ_VALIDATED_STORAGE_KEY]: true
-        });
-        sendResponse({ ok: true });
-      })
-      .catch(async (error) => {
-        await chrome.storage.local.set({ [GROQ_VALIDATED_STORAGE_KEY]: false });
-        sendResponse({ ok: false, error: error.message });
-      });
+		callGroq(apiKey, "Reply with exactly: ok")
+			.then(async () => {
+				await chrome.storage.local.set({
+					[GROQ_API_KEY_STORAGE_KEY]: apiKey,
+					[GROQ_VALIDATED_STORAGE_KEY]: true,
+				});
+				sendResponse({ ok: true });
+			})
+			.catch(async (error) => {
+				await chrome.storage.local.set({ [GROQ_VALIDATED_STORAGE_KEY]: false });
+				sendResponse({ ok: false, error: error.message });
+			});
 
-    return true;
-  }
+		return true;
+	}
 
-  if (message?.type === "OE_CLEAR_GROQ_KEY") {
-    chrome.storage.local
-      .remove([GROQ_API_KEY_STORAGE_KEY, GROQ_VALIDATED_STORAGE_KEY])
-      .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: error.message }));
+	if (message?.type === "OE_CLEAR_GROQ_KEY") {
+		chrome.storage.local
+			.remove([GROQ_API_KEY_STORAGE_KEY, GROQ_VALIDATED_STORAGE_KEY])
+			.then(() => sendResponse({ ok: true }))
+			.catch((error) => sendResponse({ ok: false, error: error.message }));
 
-    return true;
-  }
+		return true;
+	}
 
-  if (message?.type === "OE_GENERATE_PICO") {
-    const selection = typeof message.selection === "string" ? message.selection.trim() : "";
-    if (!selection) {
-      sendResponse({ ok: false, error: "Selection is required" });
-      return false;
-    }
+	if (message?.type === "OE_GENERATE_PICO") {
+		const selection =
+			typeof message.selection === "string" ? message.selection.trim() : "";
+		if (!selection) {
+			sendResponse({ ok: false, error: "Selection is required" });
+			return false;
+		}
 
-    chrome.storage.local.get(
-      {
-        [GROQ_API_KEY_STORAGE_KEY]: "",
-        [GROQ_VALIDATED_STORAGE_KEY]: false
-      },
-      (items) => {
-        const apiKey = items[GROQ_API_KEY_STORAGE_KEY];
-        const validated = items[GROQ_VALIDATED_STORAGE_KEY] === true;
+		chrome.storage.local.get(
+			{
+				[GROQ_API_KEY_STORAGE_KEY]: "",
+				[GROQ_VALIDATED_STORAGE_KEY]: false,
+			},
+			(items) => {
+				const apiKey = items[GROQ_API_KEY_STORAGE_KEY];
+				const validated = items[GROQ_VALIDATED_STORAGE_KEY] === true;
 
-        if (!apiKey || !validated) {
-          sendResponse({ ok: false, error: "Validate a Groq API key in extension options first" });
-          return;
-        }
+				if (!apiKey || !validated) {
+					sendResponse({
+						ok: false,
+						error: "Validate a Groq API key in extension options first",
+					});
+					return;
+				}
 
-        const prompt = `${PICO_INSTRUCTION}\n\n+++user selection+++\n${selection}`;
-        callGroq(apiKey, prompt, { jsonMode: true })
-          .then((content) => sendResponse({ ok: true, content: extractPicoQuestion(content), prompt: PICO_INSTRUCTION }))
-          .catch((error) => sendResponse({ ok: false, error: error.message }));
-      }
-    );
+				const prompt = `${PICO_INSTRUCTION}\n\n+++user selection+++\n${selection}`;
+				callGroq(apiKey, prompt, { jsonMode: true })
+					.then((content) =>
+						sendResponse({
+							ok: true,
+							content: extractPicoQuestion(content),
+							prompt: PICO_INSTRUCTION,
+						}),
+					)
+					.catch((error) => sendResponse({ ok: false, error: error.message }));
+			},
+		);
 
-    return true;
-  }
+		return true;
+	}
 
-  if (message?.type === "OE_GENERATE_CUSTOM_PROMPT") {
-    const selection = typeof message.selection === "string" ? message.selection.trim() : "";
-    const prompt = typeof message.prompt === "string" ? message.prompt.trim() : "";
-    if (!selection || !prompt) {
-      sendResponse({ ok: false, error: "Selection and prompt are required" });
-      return false;
-    }
+	if (message?.type === "OE_GENERATE_CUSTOM_PROMPT") {
+		const selection =
+			typeof message.selection === "string" ? message.selection.trim() : "";
+		const prompt =
+			typeof message.prompt === "string" ? message.prompt.trim() : "";
+		if (!selection || !prompt) {
+			sendResponse({ ok: false, error: "Selection and prompt are required" });
+			return false;
+		}
 
-    chrome.storage.local.get(
-      {
-        [GROQ_API_KEY_STORAGE_KEY]: "",
-        [GROQ_VALIDATED_STORAGE_KEY]: false
-      },
-      (items) => {
-        const apiKey = items[GROQ_API_KEY_STORAGE_KEY];
-        const validated = items[GROQ_VALIDATED_STORAGE_KEY] === true;
+		chrome.storage.local.get(
+			{
+				[GROQ_API_KEY_STORAGE_KEY]: "",
+				[GROQ_VALIDATED_STORAGE_KEY]: false,
+			},
+			(items) => {
+				const apiKey = items[GROQ_API_KEY_STORAGE_KEY];
+				const validated = items[GROQ_VALIDATED_STORAGE_KEY] === true;
 
-        if (!apiKey || !validated) {
-          sendResponse({ ok: false, error: "Validate a Groq API key in extension options first" });
-          return;
-        }
+				if (!apiKey || !validated) {
+					sendResponse({
+						ok: false,
+						error: "Validate a Groq API key in extension options first",
+					});
+					return;
+				}
 
-        callGroq(apiKey, buildJsonTransformMessages(prompt, selection), { jsonMode: true })
-          .then((content) => sendResponse({ ok: true, content: extractPicoQuestion(content), prompt }))
-          .catch((error) => sendResponse({ ok: false, error: error.message }));
-      }
-    );
+				const fullPrompt = `${selection}\n\n${prompt}`;
+				callGroq(apiKey, fullPrompt)
+					.then((content) =>
+						sendResponse({ ok: true, content: content.trim(), prompt }),
+					)
+					.catch((error) => sendResponse({ ok: false, error: error.message }));
+			},
+		);
 
-    return true;
-  }
+		return true;
+	}
 
-  return false;
+	return false;
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "sync") {
-    return;
-  }
+	if (areaName !== "sync") {
+		return;
+	}
 
-  if (changes[OPEN_MODE_STORAGE_KEY] || changes[ACTIVE_TAB_STORAGE_KEY]) {
-    loadOpenMode();
-  }
+	if (changes[OPEN_MODE_STORAGE_KEY] || changes[ACTIVE_TAB_STORAGE_KEY]) {
+		loadOpenMode();
+	}
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  if (chrome.sidePanel?.open && tab?.id != null) {
-    chrome.sidePanel.open({ tabId: tab.id });
-  } else {
-    chrome.runtime.openOptionsPage();
-  }
+	if (chrome.sidePanel?.open && tab?.id != null) {
+		chrome.sidePanel.open({ tabId: tab.id });
+	} else {
+		chrome.runtime.openOptionsPage();
+	}
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== ASK_CONTEXT_MENU_ID) {
-    return;
-  }
+	if (info.menuItemId !== ASK_CONTEXT_MENU_ID) {
+		return;
+	}
 
-  openOpenEvidenceQuery(info.selectionText, tab, undefined, { source: "context-menu" });
+	openOpenEvidenceQuery(info.selectionText, tab, undefined, {
+		source: "context-menu",
+	});
 });
