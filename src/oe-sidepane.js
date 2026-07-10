@@ -99,8 +99,24 @@ function startCollapsing() {
   }, COLLAPSE_POLL_INTERVAL_MS);
 }
 
+// The side panel page can't read the cross-origin iframe's location, so it asks
+// us over postMessage when the user clicks "Open in tab" and we answer with the
+// URL currently loaded in this frame.
+const URL_REQUEST_TYPE = "oe-sidepanel-url-request";
+const URL_RESPONSE_TYPE = "oe-sidepanel-url-response";
+
+function startUrlResponder() {
+  window.addEventListener("message", (event) => {
+    if (event.source !== window.parent || event.data?.type !== URL_REQUEST_TYPE) {
+      return;
+    }
+    window.parent.postMessage({ type: URL_RESPONSE_TYPE, url: window.location.href }, event.origin);
+  });
+}
+
 // window.top !== window.self means we're framed — the only place OE is framed in
 // this extension is the side panel.
 if (typeof window !== "undefined" && window.top !== window.self) {
   startCollapsing();
+  startUrlResponder();
 }

@@ -39,10 +39,50 @@ function setSource(url, label) {
   openTabButton.hidden = false;
 }
 
+// The iframe is cross-origin, so we can't read where the user has navigated to
+// inside it. The oe-sidepane.js content script answers a postMessage request
+// with the frame's live URL; if no answer arrives (frame not loaded, script not
+// injected), fall back to the URL the panel was opened with.
+const URL_REQUEST_TYPE = "oe-sidepanel-url-request";
+const URL_RESPONSE_TYPE = "oe-sidepanel-url-response";
+const URL_RESPONSE_TIMEOUT_MS = 300;
+
+function openInTab(url) {
+  chrome.tabs.create({ url, active: true });
+}
+
 openTabButton.addEventListener("click", () => {
-  if (currentUrl) {
-    chrome.tabs.create({ url: currentUrl, active: true });
+  if (!currentUrl) {
+    return;
   }
+
+  const contentWindow = frame.hidden ? null : frame.contentWindow;
+  if (!contentWindow) {
+    openInTab(currentUrl);
+    return;
+  }
+
+  let settled = false;
+  const settle = (url) => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    window.clearTimeout(timer);
+    window.removeEventListener("message", onMessage);
+    openInTab(url);
+  };
+
+  const timer = window.setTimeout(() => settle(currentUrl), URL_RESPONSE_TIMEOUT_MS);
+  const onMessage = (event) => {
+    if (event.source !== contentWindow || event.data?.type !== URL_RESPONSE_TYPE) {
+      return;
+    }
+    settle(typeof event.data.url === "string" && event.data.url ? event.data.url : currentUrl);
+  };
+
+  window.addEventListener("message", onMessage);
+  contentWindow.postMessage({ type: URL_REQUEST_TYPE }, new URL(currentUrl).origin);
 });
 
 settingsButton.addEventListener("click", () => {
