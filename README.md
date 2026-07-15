@@ -117,6 +117,8 @@ attach one of *your own* Dotflows to a question straight from the extension, so 
 answer is generated with that Dotflow already active — no manual selection on the
 OpenEvidence page.
 
+![Dotflow selector demo](docs/dotflow-selector.png)
+
 **How it works**
 
 - The side panel fetches your Dotflow list from
