@@ -55,7 +55,11 @@ make build        # 跑測試後才建 dist/
 
 自製 runner，逐檔 spawn node 執行 `tests/*.test.mjs`，無測試框架。新增測試檔放進 `tests/` 就會自動被撿到。
 
-⚠️ **12 個測試檔沒有一個涵蓋 Dotflow 注入**。那是 fork 的核心功能，卻只能靠 `&oe_ext_debug=1` 手動驗證。動 `dotflow-inject.js` 時**測試全綠不代表沒壞**。
+其餘測試沿用 house style（在測試檔內重寫邏輯），但 **`tests/dotflow-inject.test.mjs` 是例外**：它用 `node:vm` 載入**真正的 `src/dotflow-inject.js`**，在極簡假瀏覽器（stub `location` / `window` / `Request` / `XMLHttpRequest`）中執行。核心功能不能測副本——副本會與真檔漂移。
+
+該測試釘住的行為即是 schema 紀錄：`dotflow` 掛 `inputs` 底下、頁面已設的 id 不覆蓋、一次性、無法 parse 的 body 原樣放行、fetch 與 XHR 共用 `done` 旗標。**改動 OpenEvidence schema 時先改測試，再改實作。**
+
+自動化仍測不到的部分：實際端點是否還是 `/api/article`、OE 真實 body 形狀是否變了。那兩件事只能用 `&oe_ext_debug=1` 手動驗。
 
 ## Manifest 的 fork 改動
 
