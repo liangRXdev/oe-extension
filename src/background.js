@@ -87,24 +87,23 @@ function buildHistoryEntry(entry) {
 }
 
 function recordHistory(entry) {
-	chrome.storage.local.get(
-		{
-			[HISTORY_ENABLED_STORAGE_KEY]: DEFAULT_HISTORY_ENABLED,
-			[HISTORY_STORAGE_KEY]: [],
-		},
-		(items) => {
-			if (items[HISTORY_ENABLED_STORAGE_KEY] === false) {
+	chrome.storage.sync.get(
+		{ [HISTORY_ENABLED_STORAGE_KEY]: DEFAULT_HISTORY_ENABLED },
+		(syncItems) => {
+			if (syncItems[HISTORY_ENABLED_STORAGE_KEY] === false) {
 				return;
 			}
 
-			const existing = Array.isArray(items[HISTORY_STORAGE_KEY])
-				? items[HISTORY_STORAGE_KEY]
-				: [];
-			const next = [buildHistoryEntry(entry), ...existing].slice(
-				0,
-				HISTORY_LIMIT,
-			);
-			chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: next });
+			chrome.storage.local.get({ [HISTORY_STORAGE_KEY]: [] }, (items) => {
+				const existing = Array.isArray(items[HISTORY_STORAGE_KEY])
+					? items[HISTORY_STORAGE_KEY]
+					: [];
+				const next = [buildHistoryEntry(entry), ...existing].slice(
+					0,
+					HISTORY_LIMIT,
+				);
+				chrome.storage.local.set({ [HISTORY_STORAGE_KEY]: next });
+			});
 		},
 	);
 }
@@ -358,6 +357,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 		STORAGE_KEY,
 		ACTIVE_TAB_STORAGE_KEY,
 		OPEN_MODE_STORAGE_KEY,
+		HISTORY_ENABLED_STORAGE_KEY,
 	]);
 	const defaults = {};
 
@@ -372,6 +372,19 @@ chrome.runtime.onInstalled.addListener(async () => {
 		stored[OPEN_MODE_STORAGE_KEY] !== OPEN_MODE_SIDE_PANE
 	) {
 		defaults[OPEN_MODE_STORAGE_KEY] = resolveOpenMode(stored);
+	}
+
+	// oeHistoryEnabled used to live in storage.local; migrate any existing
+	// value into storage.sync so upgrading users keep their preference.
+	if (typeof stored[HISTORY_ENABLED_STORAGE_KEY] !== "boolean") {
+		const legacyLocal = await chrome.storage.local.get([
+			HISTORY_ENABLED_STORAGE_KEY,
+		]);
+		if (typeof legacyLocal[HISTORY_ENABLED_STORAGE_KEY] === "boolean") {
+			defaults[HISTORY_ENABLED_STORAGE_KEY] =
+				legacyLocal[HISTORY_ENABLED_STORAGE_KEY];
+		}
+		await chrome.storage.local.remove([HISTORY_ENABLED_STORAGE_KEY]);
 	}
 
 	if (Object.keys(defaults).length > 0) {
@@ -415,6 +428,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 	if (message?.type === "OE_OPEN_GOOGLE") {
 		openGoogleQuery(message.query, sender.tab, sendResponse);
+		return true;
+	}
+
+	// Sent by src/nccn-redirect.js when a rewritten NCCN link is clicked. It
+	// comes from the OpenEvidence tab or from the OE iframe inside the side
+	// panel; the latter has no sender.tab, so the new tab just lands at the end
+	// of the strip. The service worker opens it because a content script has no
+	// chrome.tabs, and because a page can't navigate itself to a file:// URL.
+	if (message?.type === "OE_OPEN_URL") {
+		const url = typeof message.url === "string" ? message.url.trim() : "";
+		if (!url) {
+			sendResponse({ ok: false, error: "Empty URL" });
+			return false;
+		}
+
+		openInTab(url, sender.tab, sendResponse, true);
 		return true;
 	}
 
