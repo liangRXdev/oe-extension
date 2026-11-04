@@ -11,7 +11,7 @@
 
 const NCCN_ENABLED_STORAGE_KEY = "oeNccnRedirectEnabled";
 const NCCN_TEMPLATE_STORAGE_KEY = "oeNccnUrlTemplate";
-const DEFAULT_NCCN_ENABLED = true;
+const DEFAULT_NCCN_ENABLED = false;
 const DEFAULT_NCCN_TEMPLATE =
 	"https://nccn.hsiehting.com/preview/$cancer?page=$page";
 
