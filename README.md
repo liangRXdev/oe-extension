@@ -34,6 +34,7 @@ to OpenEvidence.
 - Built-in `PICO` rewrite flow for evidence-based medicine questions.
 - Custom prompt buttons with user-defined names and prompt instructions.
 - Editable LLM output panel with `Copy`, `Ask OpenEvidence`, and `Close`.
+- NCCN guideline PDF links on OpenEvidence redirected to your own viewer, in a tab and in the side pane alike.
 - Light, dark, or system appearance modes.
 - No runtime framework, no remote UI dependencies.
 
@@ -82,6 +83,32 @@ For local PDF files opened in Chrome:
 Chrome's built-in PDF viewer may not expose selection events to content scripts.
 When the floating toolbar does not appear, use the right-click context menu:
 select text, right click, choose `Ask OpenEvidence`.
+
+## NCCN Link Redirect
+
+OpenEvidence cites NCCN guidelines as links to `nccn.org` PDFs, which are behind
+a login. This extension rewrites those links to a viewer you control, keeping the
+guideline slug and page number.
+
+It runs in a full OpenEvidence tab and inside the side pane. Because the side
+pane hosts OpenEvidence in an iframe, a redirected link there always opens in a
+new tab, so the side pane stays on the conversation.
+
+Configure it under `Settings` in the options page:
+
+- `Redirect NCCN guideline links` turns the rewrite on or off (on by default).
+- `Redirect URL template` accepts two variables:
+  - `$cancer` &mdash; the guideline slug, such as `b-cell`;
+  - `$page` &mdash; the page number, defaulting to `1`.
+
+| Target              | Template                                                           |
+| ------------------- | ------------------------------------------------------------------ |
+| Web viewer          | `https://nccn.hsiehting.com/preview/$cancer?page=$page`            |
+| Local (macOS/Linux) | `file:///Users/YOUR_NAME/Downloads/NCCN/$cancer.pdf#page=$page`    |
+| Local (Windows)     | `file:///C:/Users/YOUR_NAME/Documents/NCCN/$cancer.pdf#page=$page` |
+
+`file://` templates need `Allow access to file URLs` enabled, as described under
+[Local PDF Support](#local-pdf-support).
 
 ## Groq BYOK
 

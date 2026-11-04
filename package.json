@@ -1,22 +1,22 @@
 {
-  "name": "oe-extension",
-  "version": "0.1.6",
-  "description": "Chrome extension for opening selected clinical text in OpenEvidence and rewriting selections into evidence-focused questions.",
-  "license": "MIT",
-  "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/htlin222/oe-extension.git"
-  },
-  "keywords": [
-    "chrome-extension",
-    "openevidence",
-    "evidence-based-medicine",
-    "pico",
-    "groq"
-  ],
-  "scripts": {
-    "build": "node scripts/build-extension.mjs",
-    "test": "node scripts/run-tests.mjs"
-  }
+	"name": "oe-extension",
+	"version": "0.1.8",
+	"description": "Chrome extension for opening selected clinical text in OpenEvidence and rewriting selections into evidence-focused questions.",
+	"license": "MIT",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/htlin222/oe-extension.git"
+	},
+	"keywords": [
+		"chrome-extension",
+		"openevidence",
+		"evidence-based-medicine",
+		"pico",
+		"groq"
+	],
+	"scripts": {
+		"build": "node scripts/build-extension.mjs",
+		"test": "node scripts/run-tests.mjs"
+	}
 }

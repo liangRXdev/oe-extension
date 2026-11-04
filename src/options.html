@@ -1,22 +1,49 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OpenEvidence Selection Opener</title>
-    <link rel="stylesheet" href="options.css">
+    <link rel="stylesheet" href="options.css" />
   </head>
   <body>
     <main class="shell">
       <header>
         <h1>OpenEvidence Selection Opener</h1>
-        <p>Show the oe selection button only on these URL prefixes. Use one entry per line.</p>
+        <p>
+          Show the oe selection button only on these URL prefixes. Use one entry
+          per line.
+        </p>
       </header>
 
       <nav class="tab-nav" role="tablist" aria-label="Options sections">
-        <button type="button" class="tab-button is-active" data-tab="settings" role="tab" aria-selected="true">Settings</button>
-        <button type="button" class="tab-button" data-tab="prompts" role="tab" aria-selected="false">Prompts</button>
-        <button type="button" class="tab-button" data-tab="history" role="tab" aria-selected="false">History</button>
+        <button
+          type="button"
+          class="tab-button is-active"
+          data-tab="settings"
+          role="tab"
+          aria-selected="true"
+        >
+          Settings
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          data-tab="prompts"
+          role="tab"
+          aria-selected="false"
+        >
+          Prompts
+        </button>
+        <button
+          type="button"
+          class="tab-button"
+          data-tab="history"
+          role="tab"
+          aria-selected="false"
+        >
+          History
+        </button>
       </nav>
 
       <form id="options-form">
@@ -32,7 +59,7 @@
           </select>
 
           <label class="toggle-row" for="record-history">
-            <input id="record-history" type="checkbox">
+            <input id="record-history" type="checkbox" />
             <span>Record OpenEvidence query history</span>
           </label>
 
@@ -47,11 +74,51 @@
           </section>
 
           <section class="settings-section">
+            <h2>NCCN link redirect</h2>
+            <p>
+              Rewrite NCCN guideline PDF links on OpenEvidence &mdash; in a tab
+              and in the side pane &mdash; to your own viewer. Redirected links
+              always open in a new tab.
+            </p>
+            <label class="toggle-row" for="nccn-enabled">
+              <input id="nccn-enabled" type="checkbox" />
+              <span>Redirect NCCN guideline links</span>
+            </label>
+            <label for="nccn-template">Redirect URL template</label>
+            <input
+              id="nccn-template"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="https://nccn.hsiehting.com/preview/$cancer?page=$page"
+            />
+            <p class="field-hint">
+              <code>$cancer</code> is the guideline slug (e.g.
+              <code>b-cell</code>), <code>$page</code> the page number. Local
+              file example:
+              <code
+                >file:///Users/you/Downloads/NCCN/$cancer.pdf#page=$page</code
+              >
+              &mdash; file:// targets need &ldquo;Allow access to file
+              URLs&rdquo; enabled for this extension on
+              <code>chrome://extensions</code>.
+            </p>
+          </section>
+
+          <section class="settings-section">
             <h2>PICO rewrite</h2>
-            <p>Store a Groq API key locally to show the PICO button beside Ask OpenEvidence.</p>
+            <p>
+              Store a Groq API key locally to show the PICO button beside Ask
+              OpenEvidence.
+            </p>
             <label for="groq-api-key">Groq API key</label>
             <div class="key-row">
-              <input id="groq-api-key" type="password" autocomplete="off" spellcheck="false">
+              <input
+                id="groq-api-key"
+                type="password"
+                autocomplete="off"
+                spellcheck="false"
+              />
               <button type="button" id="edit-groq-key">Edit</button>
               <button type="button" id="save-groq-key">Save</button>
               <button type="button" id="clear-groq-key">Clear</button>
@@ -63,9 +130,14 @@
         <section id="tab-prompts" class="tab-panel" role="tabpanel" hidden>
           <section class="settings-section">
             <h2>Custom prompts</h2>
-            <p>Create Groq-backed buttons. Use the prompt to tell the model how to transform the selected text.</p>
+            <p>
+              Create Groq-backed buttons. Use the prompt to tell the model how
+              to transform the selected text.
+            </p>
             <div id="custom-prompts" class="custom-prompts"></div>
-            <button type="button" id="add-custom-prompt">Add Custom Prompt</button>
+            <button type="button" id="add-custom-prompt">
+              Add Custom Prompt
+            </button>
           </section>
 
           <section class="settings-section">
@@ -88,7 +160,10 @@
           <h2>Query history</h2>
           <button type="button" id="clear-history">Clear history</button>
         </div>
-        <p class="history-hint">Every text sent to OpenEvidence is recorded locally. Transforms also keep the original selection, prompt, and output.</p>
+        <p class="history-hint">
+          Every text sent to OpenEvidence is recorded locally. Transforms also
+          keep the original selection, prompt, and output.
+        </p>
         <div id="history-list" class="history-list"></div>
         <p id="history-empty" class="history-empty" hidden>No history yet.</p>
       </section>

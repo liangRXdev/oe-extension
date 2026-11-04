@@ -12,7 +12,10 @@ Chrome Manifest V3 擴充功能：選取臨床文字 → 送進 OpenEvidence。�
 - 本 fork 唯一的加法是 **Dotflows 整合**，其餘一律追隨上游
 - 改動前先問：這是**上游該修的 bug**，還是**fork 專屬功能**？前者理想上回饋上游，後者才留在這裡
 
-**盡量把 fork 的改動集中在 `src/dotflow-inject.js` 與 `src/dotflows.js` 這兩個新檔**。目前已有 13 個上游檔案被改動（`content.js` +165 行最重），每多改一個上游檔案，日後 rebase 就多一分痛。
+**盡量把 fork 的改動集中在 `src/dotflow-inject.js` 與 `src/dotflows.js` 這兩個新檔**。目前已有 14 個上游檔案被改動（`content.js` +165 行最重），每多改一個上游檔案，日後同步就多一分痛。
+
+- `src/nccn-redirect.js`／`src/options.js` 的 `DEFAULT_NCCN_ENABLED` 刻意改為 `false`（2026-11-04）：上游預設把 NCCN 連結導向第三方 viewer，fork 改為使用者自行開啟。同步上游時保留此差異。
+- 同步上游一律用 **merge**（不用 rebase）；上游改用 tab 縮排，衝突多半只是格式。
 
 看目前的分歧範圍：
 
