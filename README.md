@@ -14,11 +14,15 @@ right next to the current tab. With a validated Groq API key, it can also rewrit
 selected recall-style text into editable foreground questions before sending them
 to OpenEvidence.
 
-> **Personal fork note (liangRXdev).** This fork adds a **Dotflows** integration
-> on top of the upstream [htlin222/oe-extension](https://github.com/htlin222/oe-extension):
-> it lets you pick one of your OpenEvidence Dotflows in the side panel and have it
-> officially activated on the answer you send. Everything else tracks upstream. See
-> [Dotflows (fork addition)](#dotflows-fork-addition) below. Maintained for personal use.
+> **Personal fork note (liangRXdev).** This fork adds two features on top of the
+> upstream [htlin222/oe-extension](https://github.com/htlin222/oe-extension):
+> a **Dotflows** integration (pick one of your OpenEvidence Dotflows and have it
+> officially activated on the answer you send) and a **hospital formulary lookup**
+> (a `院內` button that matches the selection against your imported in-house drug
+> list, entirely offline). Everything else tracks upstream. See
+> [Dotflows (fork addition)](#dotflows-fork-addition) and
+> [Hospital formulary lookup (fork addition)](#hospital-formulary-lookup-fork-addition)
+> below. Maintained for personal use.
 
 ![Selection toolbar demo](docs/demo-toolbar.png)
 
@@ -33,8 +37,9 @@ to OpenEvidence.
 - BYOK Groq integration stored in `chrome.storage.local`.
 - Built-in `PICO` rewrite flow for evidence-based medicine questions.
 - Custom prompt buttons with user-defined names and prompt instructions.
+- *(fork)* `院內` button: match the selection against an imported hospital drug list, with same-ingredient and same-ATC-class items — matched locally, nothing is sent out.
 - Editable LLM output panel with `Copy`, `Ask OpenEvidence`, and `Close`.
-- NCCN guideline PDF links on OpenEvidence redirected to your own viewer, in a tab and in the side pane alike.
+- Optional redirect of NCCN guideline PDF links on OpenEvidence to your own viewer, in a tab and in the side pane alike (*fork:* off by default).
 - Light, dark, or system appearance modes.
 - No runtime framework, no remote UI dependencies.
 
@@ -96,7 +101,9 @@ new tab, so the side pane stays on the conversation.
 
 Configure it under `Settings` in the options page:
 
-- `Redirect NCCN guideline links` turns the rewrite on or off (on by default).
+- `Redirect NCCN guideline links` turns the rewrite on or off. *(fork)* **Off by
+  default** in this fork — upstream turns it on and points to a third-party viewer;
+  here NCCN links open as-is until you enable it and set your own template.
 - `Redirect URL template` accepts two variables:
   - `$cancer` &mdash; the guideline slug, such as `b-cell`;
   - `$page` &mdash; the page number, defaulting to `1`.
@@ -168,6 +175,55 @@ OpenEvidence page.
   may change without notice; if activation stops working, append `&oe_ext_debug=1`
   to the `/ask` URL to log every POST endpoint seen and re-verify the schema.
 - Scoped to `https://www.openevidence.com/ask*` via `manifest.json` content scripts.
+
+## Hospital formulary lookup (fork addition)
+
+> Fork addition, ported from
+> [LCCtaiwan/oe-extension](https://github.com/LCCtaiwan/oe-extension)
+> (`feature/hospital-formulary`) with every network lookup removed.
+
+Select a drug name and press **`院內`** (next to `Ask OpenEvidence`). A panel lists:
+
+- **符合品項** — in-house items whose Chinese name, English name, ingredient, or
+  in-house code matches the selection.
+- **同成分** — other items with the identical 7-character ATC code.
+- **同 ATC 分類** — items sharing the 5-character ATC chemical subgroup
+  (e.g. `C10AA` statins). This is a classification grouping, **not** a statement of
+  therapeutic equivalence or substitutability; the panel says so.
+- Click an in-house code to copy it.
+
+**Importing the list**
+
+Options page → **院內品項** tab → choose an `.xlsx` (first worksheet) or `.csv`
+(UTF-8 or Big5). The header row is detected automatically within the first 20 rows:
+
+| Field | Accepted headers |
+|---|---|
+| Name (required, one of) | `藥名` `品名` `藥品名稱` `中文品名` / `英文品名` |
+| In-house code | `CODE` `院內代碼` `藥品代碼` `批價碼` `藥碼` |
+| Ingredient | `成分` `主成分` |
+| ATC | `ATC` `ATC碼` |
+
+Rows with no name are skipped; a malformed ATC (e.g. `A02AB;A02AX`) is kept for
+name matching but not used for grouping. Importing a new file replaces the list;
+a failed import keeps the previous one.
+
+**Privacy**
+
+- The list is stored only in `chrome.storage.local` on this computer — not synced,
+  not uploaded.
+- Matching runs inside the page's content script; the selected text is **never**
+  sent to any server. This is deliberate: a selection on a web-based HIS page can
+  include patient identifiers. (The upstream port's RxClass / Groq / Google Sheet
+  features were removed for this reason.)
+
+**Limitations**
+
+- Chinese matches need the full product name or a contiguous part of it; a whole
+  Chinese sentence won't match.
+- Foreign brand names not stocked in-house can't be resolved (no RxNorm lookup).
+- Salt / hydrate words (`hydrochloride`, `maleate`, …) and `anti-xxx` terms are
+  ignored for matching.
 
 ## OpenEvidence URL
 
