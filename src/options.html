@@ -44,6 +44,15 @@
         >
           History
         </button>
+        <button
+          type="button"
+          class="tab-button"
+          data-tab="formulary"
+          role="tab"
+          aria-selected="false"
+        >
+          院內品項
+        </button>
       </nav>
 
       <form id="options-form">
@@ -167,8 +176,30 @@
         <div id="history-list" class="history-list"></div>
         <p id="history-empty" class="history-empty" hidden>No history yet.</p>
       </section>
+
+      <!-- fork: 院內品項 (src/formulary-options.js) -->
+      <section id="tab-formulary" class="tab-panel" role="tabpanel" hidden>
+        <section class="settings-section">
+          <h2>院內品項</h2>
+          <p class="field-hint">
+            匯入院內藥檔（.xlsx 第一個工作表，或 .csv；UTF-8／Big5 皆可）。
+            需有藥名欄（<code>藥名</code>／<code>中文品名</code>／<code>英文品名</code>），
+            可選 <code>CODE</code>／<code>院內代碼</code>、<code>成分</code>、<code>ATC</code>。
+            清單只存在這台電腦的瀏覽器，比對時選取文字不會送出。
+          </p>
+          <label for="formulary-file">藥檔</label>
+          <input id="formulary-file" type="file" accept=".xlsx,.csv,text/csv" />
+          <p id="formulary-summary" class="field-hint"></p>
+          <div class="actions">
+            <button type="button" id="formulary-clear">清除院內藥檔</button>
+          </div>
+          <p id="formulary-status" role="status" aria-live="polite"></p>
+        </section>
+      </section>
     </main>
 
     <script src="options.js"></script>
+    <script src="formulary.js"></script>
+    <script src="formulary-options.js"></script>
   </body>
 </html>

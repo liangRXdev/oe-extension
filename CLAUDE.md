@@ -9,7 +9,8 @@ Chrome Manifest V3 擴充功能：選取臨床文字 → 送進 OpenEvidence。�
 上游 `htlin222/oe-extension`，本 repo 是 `liangRXdev` 的個人 fork。
 
 - `upstream` 的 push URL 已設為 `DISABLE`——**別想辦法繞過它**，那是防手滑推到別人 repo 的保險
-- 本 fork 唯一的加法是 **Dotflows 整合**，其餘一律追隨上游
+- 本 fork 的加法是 **Dotflows 整合** 與 **院內品項比對**，其餘一律追隨上游
+- 院內品項移植自 `LCCtaiwan/oe-extension` 的 `feature/hospital-formulary`，**刻意拿掉 RxClass／Groq／Google Sheet 同步**：選取文字可能夾帶 HIS 頁面上的病人資料，比對必須全在本機。藥檔只存 `chrome.storage.local`，不要改成 sync 或外部來源。檔案：`src/formulary.js`（解析＋比對）、`src/formulary-ui.js`／`src/formulary.css`（按鈕＋面板）、`src/formulary-options.js`（匯入分頁）；上游檔只動 `content.js` 的 hook 與寬度常數、`manifest.json`、`options.html`
 - 改動前先問：這是**上游該修的 bug**，還是**fork 專屬功能**？前者理想上回饋上游，後者才留在這裡
 
 **盡量把 fork 的改動集中在 `src/dotflow-inject.js` 與 `src/dotflows.js` 這兩個新檔**。目前已有 14 個上游檔案被改動（`content.js` +165 行最重），每多改一個上游檔案，日後同步就多一分痛。

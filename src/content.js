@@ -21,6 +21,7 @@ const GOOGLE_BUTTON_WIDTH = 96;
 const CLOSE_BUTTON_WIDTH = 34;
 const PICO_BUTTON_WIDTH = 62;
 const CUSTOM_BUTTON_WIDTH = 96;
+const FORMULARY_BUTTON_WIDTH = 72; // fork: 院內 button (src/formulary-ui.js)
 const BUTTON_HEIGHT = 34;
 const BUTTON_GAP = 8;
 const VIEWPORT_MARGIN = 10;
@@ -225,6 +226,8 @@ function getButtonPosition() {
     Math.min(
       window.innerWidth - VIEWPORT_MARGIN * 2,
       BUTTON_WIDTH +
+        BUTTON_GAP +
+        FORMULARY_BUTTON_WIDTH +
         BUTTON_GAP +
         UPTODATE_BUTTON_WIDTH +
         BUTTON_GAP +
@@ -532,6 +535,11 @@ function ensureToolbar() {
   });
 
   toolbar.appendChild(askButton);
+
+  // fork: 院內品項 lookup, defined in src/formulary-ui.js
+  if (typeof addFormularyButton === "function") {
+    addFormularyButton(toolbar);
+  }
 
   if (dotflows.length > 0) {
     toolbar.appendChild(makeDotflowPicker());
